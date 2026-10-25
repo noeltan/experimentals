@@ -19,11 +19,39 @@ Experiment: our own controller for Miele connected appliances, so we don't depen
   3. then poll it and control it from our own code.
 - **Catch:** unofficial, so it varies by model and firmware, and it can break.
 
-## Plan (to be confirmed)
-1. Work out where things fail: the device never joins Wi-Fi, or it joins but the app can't see or control it.
-2. If any device is online: start with the cloud API (a small script that lists devices and streams their status).
-3. If none will onboard: try LAN commissioning on one appliance.
-4. Wrap whichever works in a simple dashboard (and/or Home Assistant).
+## Status
+Going with option 1, the cloud API. `miele.py` is a small command-line client that needs only standard Python 3.
+
+### Step 0: get each appliance into the Miele app once
+The cloud API can only see appliances that are already on your Miele account, so each one has to make it through the app's setup one time. After that we don't need the app. If the app's setup keeps failing:
+- **Use 2.4 GHz Wi-Fi.** Most Miele Wi-Fi modules can't use 5 GHz. If your router or mesh puts both bands under one network name, temporarily turn on a separate 2.4 GHz network, or turn off "band steering", just while you do the setup.
+- **Try WPS instead of the app's Wi-Fi handoff.** On the appliance, go to *Settings → Miele@home → Log in via WPS*, then press the WPS button on your router within 2 minutes. Once the appliance is on Wi-Fi, open the app's *Add appliance* screen on the same network so it can find the appliance.
+- Allow the app location and local-network permissions on your phone. Also turn off your phone's VPN, Private Relay and "switch to mobile data" during setup.
+- Stand near the router. Appliances in a garage or laundry often have a weak signal.
+
+### Step 1: developer credentials (free)
+Sign up at https://developer.miele.com → *Get involved*. You'll get a client ID and secret. If the form asks for a redirect URI, give it `http://localhost:8080/callback`.
+
+```sh
+export MIELE_CLIENT_ID=...
+export MIELE_CLIENT_SECRET=...
+```
+
+### Step 2: use it
+```sh
+python3 miele.py login                    # opens the Miele sign-in page, saves tokens to .tokens.json (git-ignored)
+python3 miele.py devices                  # appliances + status
+python3 miele.py watch                    # live updates
+python3 miele.py actions <device-id>      # what it accepts right now
+python3 miele.py do <device-id> start     # start | stop | pause | on | off | light-on | light-off
+```
+Starting a program remotely only works if *Remote Start* / *Mobile Start* is switched on at the appliance and the appliance is ready to go (door closed, detergent in, and so on). This is Miele's safety rule; the API can't get around it.
+
+Optional settings: `MIELE_LANGUAGE` (default `en`), `MIELE_REDIRECT_URI`, `MIELE_TOKEN_FILE`.
+
+### Next
+- A phone-friendly web dashboard on top of this.
+- Fallback: option 2 (local LAN) for any appliance that just won't join through the app.
 
 ## Devices
 | Appliance | Model | Wi-Fi status | Notes |
